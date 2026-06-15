@@ -1,25 +1,30 @@
 let tg = window.Telegram.WebApp;
-tg.expand(); // Expand to full height
+tg.expand();
 
-// Elements
+// DOM Elements
 const prevHoursInput = document.getElementById('prev-hours');
 const prevGpaInput = document.getElementById('prev-gpa');
 const coursesContainer = document.getElementById('courses-container');
 const addCourseBtn = document.getElementById('add-course-btn');
 const saveBtn = document.getElementById('save-btn');
 
-const targetToggle = document.getElementById('target-toggle');
-const targetContent = document.getElementById('target-content');
-const targetGpaInput = document.getElementById('target-gpa');
-const targetHoursInput = document.getElementById('target-hours');
-const targetResult = document.getElementById('target-result');
-
-const resSemesterGpa = document.getElementById('res-semester-gpa');
 const resCumulativeGpa = document.getElementById('res-cumulative-gpa');
-const resRating = document.getElementById('res-rating');
+const resSemesterGpa = document.getElementById('res-semester-gpa');
+const resTotalHours = document.getElementById('res-total-hours');
 
-// State
-let courses = []; 
+// Advanced Section Elements
+const totalPlanHoursInput = document.getElementById('total-plan-hours');
+const targetGpaInput = document.getElementById('target-gpa');
+const globalTargetResult = document.getElementById('global-target-result');
+const semesterPlannerBox = document.getElementById('semester-planner');
+const plannerHoursInput = document.getElementById('planner-hours');
+const plannerResult = document.getElementById('planner-result');
+
+let courses = [];
+let currentSemesterTotalHours = 0;
+let computedSemesterGpa = 0.0;
+let computedCumulativeGpa = 0.0;
+let ratingString = "";
 
 function getRatingByPoints(points) {
     if (points >= 3.75) return 'امتياز';
@@ -30,7 +35,6 @@ function getRatingByPoints(points) {
     return 'إنذار';
 }
 
-// Add empty course row
 function addCourseRow() {
     const id = Date.now();
     const row = document.createElement('div');
@@ -38,9 +42,9 @@ function addCourseRow() {
     row.id = `course-${id}`;
     
     row.innerHTML = `
-        <input type="text" class="course-input-name" placeholder="اسم المادة" style="flex: 1.5; min-width:80px;">
-        <select class="course-input-hours" onchange="calculate()" style="flex: 1; padding: 5px;">
-            <option value="0" disabled selected>ساعات</option>
+        <input type="text" class="flex-2" placeholder="اسم المادة">
+        <select class="course-input-hours flex-1" onchange="calculate()">
+            <option value="0" disabled selected>الساعات</option>
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
@@ -48,8 +52,8 @@ function addCourseRow() {
             <option value="5">5</option>
             <option value="6">6</option>
         </select>
-        <select class="course-input-grade" onchange="calculate()" style="flex: 1; padding: 5px;">
-            <option value="" disabled selected>الرمز</option>
+        <select class="course-input-grade flex-1" onchange="calculate()">
+            <option value="" disabled selected>العلامة</option>
             <option value="4.2">A+</option>
             <option value="4.0">A</option>
             <option value="3.75">A-</option>
@@ -64,7 +68,7 @@ function addCourseRow() {
             <option value="1.5">D-</option>
             <option value="0.5">F</option>
         </select>
-        <button class="btn-remove" onclick="removeCourse(${id})" style="width:30px;">✖</button>
+        <button class="btn-icon remove-btn" onclick="removeCourse(${id})"><i class="fas fa-minus"></i></button>
     `;
     
     coursesContainer.appendChild(row);
@@ -77,18 +81,6 @@ function removeCourse(id) {
     calculate();
 }
 
-// Target toggle
-targetToggle.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        targetContent.classList.remove('hidden');
-    } else {
-        targetContent.classList.add('hidden');
-    }
-});
-
-let currentSemesterTotalHours = 0;
-
-// Main Calculation
 function calculate() {
     let prevHours = parseFloat(prevHoursInput.value) || 0;
     let prevGpa = parseFloat(prevGpaInput.value) || 0;
@@ -101,89 +93,157 @@ function calculate() {
     
     for (let i = 0; i < courses.length; i++) {
         let h = parseFloat(hourInputs[i].value) || 0;
-        let p = parseFloat(gradeInputs[i].value); // Points from dropdown
+        let p = parseFloat(gradeInputs[i].value);
         
         if (h > 0 && !isNaN(p)) {
             totalSemesterHours += h;
             totalSemesterPoints += (p * h);
         }
     }
+    
     currentSemesterTotalHours = totalSemesterHours;
     
-    let semesterGpa = 0;
+    let semesterGpa = 0.0;
     if (totalSemesterHours > 0) {
         semesterGpa = totalSemesterPoints / totalSemesterHours;
     }
     
     let cumulativeGpa = prevGpa;
-    if (prevHours + totalSemesterHours > 0) {
+    let totalHoursNow = prevHours + totalSemesterHours;
+    
+    if (totalHoursNow > 0) {
         let totalOldPoints = prevHours * prevGpa;
-        cumulativeGpa = (totalOldPoints + totalSemesterPoints) / (prevHours + totalSemesterHours);
+        cumulativeGpa = (totalOldPoints + totalSemesterPoints) / totalHoursNow;
     }
     
-    // Update UI
-    resSemesterGpa.textContent = semesterGpa.toFixed(2);
-    resCumulativeGpa.textContent = cumulativeGpa.toFixed(2);
+    computedSemesterGpa = semesterGpa;
+    computedCumulativeGpa = cumulativeGpa;
+    ratingString = getRatingByPoints(cumulativeGpa);
     
-    let finalRating = getRatingByPoints(cumulativeGpa);
-    resRating.textContent = finalRating;
-
-    calculateTarget(prevHours, prevGpa);
+    // Update Circles
+    resSemesterGpa.textContent = semesterGpa > 0 ? semesterGpa.toFixed(3) : "0.000";
+    resCumulativeGpa.textContent = cumulativeGpa > 0 ? cumulativeGpa.toFixed(3) : "0.000";
+    resTotalHours.textContent = totalHoursNow;
+    
+    calculateAdvancedTarget(totalHoursNow, cumulativeGpa);
 }
 
-function calculateTarget(prevHours, prevGpa) {
-    if (!targetToggle.checked) return;
+// Advanced Target Logic
+let requiredAverageRemaining = 0; // Global required average
+
+function calculateAdvancedTarget(currentHours, currentGpa) {
+    let totalPlanHours = parseFloat(totalPlanHoursInput.value) || 0;
+    let targetGpa = parseFloat(targetGpaInput.value) || 0;
     
-    let target = parseFloat(targetGpaInput.value) || 0;
-    let semHours = parseFloat(targetHoursInput.value) || 0;
-    
-    if (target === 0 || semHours === 0) {
-        targetResult.className = 'target-message';
-        targetResult.textContent = 'أدخل الساعات وهدفك التراكمي لنخبرك بالمعدل الفصلي المطلوب!';
+    if (totalPlanHours === 0 || targetGpa === 0 || currentHours === 0) {
+        globalTargetResult.classList.add('hidden');
+        semesterPlannerBox.classList.add('hidden');
         return;
     }
     
-    let totalTargetPoints = target * (prevHours + semHours);
-    let neededSemesterPoints = totalTargetPoints - (prevHours * prevGpa);
-    let neededSemesterGpa = neededSemesterPoints / semHours;
+    globalTargetResult.classList.remove('hidden');
     
-    if (neededSemesterGpa > 4.2) {
-        targetResult.className = 'target-message danger';
-        targetResult.textContent = `مستحيل! للوصول إلى تراكمي ${target.toFixed(2)} تحتاج معدل فصلي ${neededSemesterGpa.toFixed(2)} وهذا يتجاوز 4.20 ❌`;
-    } else if (neededSemesterGpa < 0) {
-        targetResult.className = 'target-message success';
-        targetResult.textContent = `وضعك ممتاز! حتى لو كان معدلك الفصلي صفر ستبقى فوق هدفك.`;
-    } else {
-        targetResult.className = 'target-message success';
-        targetResult.textContent = `للوصول إلى تراكمي ${target.toFixed(2)}، يجب أن تجلب معدل فصلي لا يقل عن ${neededSemesterGpa.toFixed(2)} هذا الفصل 🚀`;
+    let remainingHours = totalPlanHours - currentHours;
+    if (remainingHours <= 0) {
+        globalTargetResult.className = 'target-message info';
+        globalTargetResult.innerHTML = "لقد أنهيت ساعات خطتك! لا يوجد ساعات متبقية للتوقع.";
+        semesterPlannerBox.classList.add('hidden');
+        return;
     }
+    
+    let currentPoints = currentHours * currentGpa;
+    let targetTotalPoints = totalPlanHours * targetGpa;
+    let requiredPointsRemaining = targetTotalPoints - currentPoints;
+    requiredAverageRemaining = requiredPointsRemaining / remainingHours;
+    
+    if (requiredAverageRemaining > 4.2) {
+        let maxPossibleGpa = ((remainingHours * 4.2) + currentPoints) / totalPlanHours;
+        globalTargetResult.className = 'target-message danger';
+        globalTargetResult.innerHTML = `عذراً يا زميلي، للوصول لمعدل ${targetGpa.toFixed(2)} تحتاج لمتوسط ${requiredAverageRemaining.toFixed(3)} في الساعات المتبقية (${remainingHours} ساعة)، وهو يتجاوز الحد الأقصى (4.2).<br>أقصى معدل تراكمي يمكنك الوصول إليه إذا حصلت على A+ في جميع موادك القادمة هو: <strong>${maxPossibleGpa.toFixed(3)}</strong>!`;
+        semesterPlannerBox.classList.add('hidden');
+    } else if (requiredAverageRemaining <= 0.5) {
+        globalTargetResult.className = 'target-message success';
+        globalTargetResult.innerHTML = `وضعك مريح جداً! متوسطك المطلوب للـ ${remainingHours} ساعة المتبقية هو ${requiredAverageRemaining.toFixed(3)} فقط للوصول لهدفك.`;
+        semesterPlannerBox.classList.remove('hidden');
+    } else {
+        globalTargetResult.className = 'target-message info';
+        globalTargetResult.innerHTML = `عشان توصل لهدفك (${targetGpa.toFixed(2)})، لازم يكون متوسط معدلك بالـ ${remainingHours} ساعة الجايات هو: <strong>${requiredAverageRemaining.toFixed(3)}</strong>.`;
+        semesterPlannerBox.classList.remove('hidden');
+    }
+    
+    calculateSemesterPlanner();
 }
 
-// Event Listeners
+function calculateSemesterPlanner() {
+    let plannerHours = parseFloat(plannerHoursInput.value) || 0;
+    if (plannerHours === 0) {
+        plannerResult.classList.add('hidden');
+        return;
+    }
+    
+    plannerResult.classList.remove('hidden');
+    
+    // If they score exactly the required average
+    let exactGpa = requiredAverageRemaining.toFixed(3);
+    
+    // If they score slightly higher (e.g. A = 4.0 if required is 3.8)
+    // We calculate how it relieves pressure
+    let currentHours = parseFloat(resTotalHours.textContent) || 0;
+    let currentGpa = parseFloat(resCumulativeGpa.textContent) || 0;
+    let totalPlanHours = parseFloat(totalPlanHoursInput.value) || 0;
+    let targetGpa = parseFloat(targetGpaInput.value) || 0;
+    
+    let remainingAfterThis = (totalPlanHours - currentHours) - plannerHours;
+    
+    if (remainingAfterThis <= 0) {
+        plannerResult.className = 'target-message success';
+        plannerResult.innerHTML = `هذا فصلك الأخير! تحتاج ${exactGpa} بالضبط للوصول لهدفك.`;
+        return;
+    }
+    
+    // Scenario 1: They score 0.2 higher than required
+    let highScenario = Math.min(4.2, requiredAverageRemaining + 0.2);
+    let pointsAfterHigh = (currentHours * currentGpa) + (plannerHours * highScenario);
+    let reqAfterHigh = ((totalPlanHours * targetGpa) - pointsAfterHigh) / remainingAfterThis;
+    
+    // Scenario 2: They score 0.2 lower
+    let lowScenario = Math.max(0.5, requiredAverageRemaining - 0.2);
+    let pointsAfterLow = (currentHours * currentGpa) + (plannerHours * lowScenario);
+    let reqAfterLow = ((totalPlanHours * targetGpa) - pointsAfterLow) / remainingAfterThis;
+    
+    let msg = `المطلوب كمتوسط هذا الفصل هو <strong>${exactGpa}</strong>.<br><br>`;
+    msg += `📉 <strong>إذا جبت ${highScenario.toFixed(2)}</strong>: سيقل الضغط عليك ويصبح المطلوب في الفصول القادمة ${reqAfterHigh.toFixed(2)}.<br>`;
+    msg += `📈 <strong>إذا جبت ${lowScenario.toFixed(2)}</strong>: سيزيد الضغط عليك ويصبح المطلوب ${reqAfterLow.toFixed(2)}.`;
+    
+    plannerResult.className = 'target-message info';
+    plannerResult.innerHTML = msg;
+}
+
+// Listeners
 addCourseBtn.addEventListener('click', addCourseRow);
 prevHoursInput.addEventListener('input', calculate);
 prevGpaInput.addEventListener('input', calculate);
-targetGpaInput.addEventListener('input', () => calculateTarget(parseFloat(prevHoursInput.value) || 0, parseFloat(prevGpaInput.value) || 0));
-targetHoursInput.addEventListener('input', () => calculateTarget(parseFloat(prevHoursInput.value) || 0, parseFloat(prevGpaInput.value) || 0));
+totalPlanHoursInput.addEventListener('input', calculate);
+targetGpaInput.addEventListener('input', calculate);
+plannerHoursInput.addEventListener('input', calculateSemesterPlanner);
 
-// Save and Export to Bot
+// Initialization
+addCourseRow();
+
+// Save functionality
 saveBtn.addEventListener('click', () => {
-    let semPercentage = ((parseFloat(resSemesterGpa.textContent) / 4.2) * 100).toFixed(2);
-    let cumPercentage = ((parseFloat(resCumulativeGpa.textContent) / 4.2) * 100).toFixed(2);
+    let semPercentage = ((computedSemesterGpa / 4.2) * 100).toFixed(2);
+    let cumPercentage = ((computedCumulativeGpa / 4.2) * 100).toFixed(2);
     
     let data = {
-        semesterGpa: resSemesterGpa.textContent,
+        semesterGpa: computedSemesterGpa > 0 ? computedSemesterGpa.toFixed(3) : "0.000",
         semesterPercentage: semPercentage,
         semesterHours: currentSemesterTotalHours,
-        cumulativeGpa: resCumulativeGpa.textContent,
+        cumulativeGpa: computedCumulativeGpa > 0 ? computedCumulativeGpa.toFixed(3) : "0.000",
         cumulativePercentage: cumPercentage,
-        cumulativeTotalHours: (parseFloat(prevHoursInput.value) || 0) + currentSemesterTotalHours,
-        rating: resRating.textContent
+        cumulativeTotalHours: resTotalHours.textContent,
+        rating: ratingString
     };
     
-    // Send data to Bot
     tg.sendData(JSON.stringify(data));
 });
-
-// Initialize with one empty course
-addCourseRow();
