@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>حاسبة المعدل الجامعي</title>
+    <!-- Telegram Web App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-panel">
+            <h1>حاسبة المعدل 🎓</h1>
+            <p>احسب معدلك الفصلي والتراكمي وتوقع هدفك!</p>
+        </header>
+
+        <!-- Previous Record Section -->
+        <section class="glass-panel section-card">
+            <h2>سجلك السابق 📊</h2>
+            <div class="input-group-row">
+                <div class="input-wrapper">
+                    <label>الساعات المقطوعة</label>
+                    <input type="number" id="prev-hours" min="0" placeholder="مثال: 45">
+                </div>
+                <div class="input-wrapper">
+                    <label>المعدل التراكمي الحالي</label>
+                    <input type="number" id="prev-gpa" step="0.01" min="0" max="4.2" placeholder="مثال: 3.20">
+                </div>
+            </div>
+        </section>
+
+        <!-- Target GPA Calculator -->
+        <section class="glass-panel section-card target-section">
+            <div class="target-header">
+                <h2>حاسبة الهدف 🎯</h2>
+                <label class="switch">
+                    <input type="checkbox" id="target-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div id="target-content" class="hidden">
+                <div class="input-wrapper">
+                    <label>المعدل التراكمي الذي تطمح له</label>
+                    <input type="number" id="target-gpa" step="0.01" min="0" max="4.2" placeholder="مثال: 3.50">
+                </div>
+                <div id="target-result" class="target-message">
+                    <!-- Dynamic message goes here -->
+                    أدخل معدلك الهدف لنرى كم تحتاج هذا الفصل!
+                </div>
+            </div>
+        </section>
+
+        <!-- Current Semester Courses -->
+        <section class="glass-panel section-card">
+            <h2>مواد الفصل الحالي 📚</h2>
+            <div id="courses-container">
+                <!-- Course rows will be added here -->
+            </div>
+            <button id="add-course-btn" class="btn-secondary">
+                <span>➕</span> أضف مادة جديدة
+            </button>
+        </section>
+
+        <!-- Live Results -->
+        <section class="glass-panel section-card results-section">
+            <h2>النتيجة اللحظية 📈</h2>
+            <div class="result-row">
+                <span>المعدل الفصلي:</span>
+                <span id="res-semester-gpa" class="highlight">0.00</span>
+            </div>
+            <div class="result-row">
+                <span>المعدل التراكمي المتوقع:</span>
+                <span id="res-cumulative-gpa" class="highlight">0.00</span>
+            </div>
+            <div class="result-row">
+                <span>التقدير:</span>
+                <span id="res-rating" class="rating-badge">-</span>
+            </div>
+        </section>
+
+        <!-- Spacer for fixed button -->
+        <div class="spacer"></div>
+    </div>
+
+    <!-- Fixed Bottom Button -->
+    <div class="bottom-action">
+        <button id="save-btn" class="btn-primary">💾 حفظ وتصدير الـ Story</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
