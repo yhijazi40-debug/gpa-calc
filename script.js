@@ -11,6 +11,7 @@ const saveBtn = document.getElementById('save-btn');
 const targetToggle = document.getElementById('target-toggle');
 const targetContent = document.getElementById('target-content');
 const targetGpaInput = document.getElementById('target-gpa');
+const targetHoursInput = document.getElementById('target-hours');
 const targetResult = document.getElementById('target-result');
 
 const resSemesterGpa = document.getElementById('res-semester-gpa');
@@ -18,30 +19,15 @@ const resCumulativeGpa = document.getElementById('res-cumulative-gpa');
 const resRating = document.getElementById('res-rating');
 
 // State
-let courses = []; // { id, hours, grade }
-
-// Grading Scale (4.2 System)
-function getGradeInfo(grade) {
-    if (grade >= 90) return { points: 4.20, letter: 'A+', rating: 'ممتاز مرتفع', color: '#32d74b' };
-    if (grade >= 85) return { points: 4.00, letter: 'A', rating: 'ممتاز', color: '#32d74b' };
-    if (grade >= 80) return { points: 3.75, letter: 'A-', rating: 'ممتاز', color: '#32d74b' };
-    if (grade >= 76) return { points: 3.50, letter: 'B+', rating: 'جيد جداً مرتفع', color: '#64d2ff' };
-    if (grade >= 72) return { points: 3.25, letter: 'B', rating: 'جيد جداً', color: '#64d2ff' };
-    if (grade >= 68) return { points: 3.00, letter: 'B-', rating: 'جيد جداً', color: '#64d2ff' };
-    if (grade >= 64) return { points: 2.75, letter: 'C+', rating: 'جيد مرتفع', color: '#ffd60a' };
-    if (grade >= 60) return { points: 2.50, letter: 'C', rating: 'جيد', color: '#ffd60a' };
-    if (grade >= 56) return { points: 2.25, letter: 'C-', rating: 'جيد', color: '#ffd60a' };
-    if (grade >= 52) return { points: 2.00, letter: 'D+', rating: 'مقبول مرتفع', color: '#ff9f0a' };
-    if (grade >= 50) return { points: 1.75, letter: 'D', rating: 'مقبول', color: '#ff9f0a' };
-    return { points: 0.00, letter: 'F', rating: 'راسب', color: '#ff453a' };
-}
+let courses = []; 
 
 function getRatingByPoints(points) {
-    if (points >= 3.75) return 'ممتاز';
-    if (points >= 2.75) return 'جيد جداً';
-    if (points >= 2.00) return 'جيد';
-    if (points >= 1.75) return 'مقبول';
-    return 'ضعيف';
+    if (points >= 3.75) return 'امتياز';
+    if (points >= 3.50) return 'ممتاز';
+    if (points >= 3.00) return 'جيد جداً';
+    if (points >= 2.50) return 'جيد';
+    if (points >= 2.00) return 'ناجح';
+    return 'إنذار';
 }
 
 // Add empty course row
@@ -52,14 +38,37 @@ function addCourseRow() {
     row.id = `course-${id}`;
     
     row.innerHTML = `
-        <input type="number" class="course-input-hours" placeholder="ساعات" min="1" max="6" data-id="${id}" oninput="calculate()">
-        <input type="number" class="course-input-grade" placeholder="العلامة (%) مثلاً 85" min="0" max="100" data-id="${id}" oninput="calculate()">
-        <span class="live-badge" id="badge-${id}">-</span>
-        <button class="btn-remove" onclick="removeCourse(${id})">✖</button>
+        <input type="text" class="course-input-name" placeholder="اسم المادة" style="flex: 1.5; min-width:80px;">
+        <select class="course-input-hours" onchange="calculate()" style="flex: 1; padding: 5px;">
+            <option value="0" disabled selected>ساعات</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+        </select>
+        <select class="course-input-grade" onchange="calculate()" style="flex: 1; padding: 5px;">
+            <option value="" disabled selected>الرمز</option>
+            <option value="4.2">A+</option>
+            <option value="4.0">A</option>
+            <option value="3.75">A-</option>
+            <option value="3.5">B+</option>
+            <option value="3.25">B</option>
+            <option value="3.0">B-</option>
+            <option value="2.75">C+</option>
+            <option value="2.5">C</option>
+            <option value="2.25">C-</option>
+            <option value="2.0">D+</option>
+            <option value="1.75">D</option>
+            <option value="1.5">D-</option>
+            <option value="0.5">F</option>
+        </select>
+        <button class="btn-remove" onclick="removeCourse(${id})" style="width:30px;">✖</button>
     `;
     
     coursesContainer.appendChild(row);
-    courses.push({ id, hours: 0, grade: 0 });
+    courses.push({ id });
 }
 
 function removeCourse(id) {
@@ -77,6 +86,8 @@ targetToggle.addEventListener('change', (e) => {
     }
 });
 
+let currentSemesterTotalHours = 0;
+
 // Main Calculation
 function calculate() {
     let prevHours = parseFloat(prevHoursInput.value) || 0;
@@ -85,32 +96,19 @@ function calculate() {
     let totalSemesterHours = 0;
     let totalSemesterPoints = 0;
     
-    // Update individual courses and calculate semester totals
     const hourInputs = document.querySelectorAll('.course-input-hours');
     const gradeInputs = document.querySelectorAll('.course-input-grade');
     
     for (let i = 0; i < courses.length; i++) {
         let h = parseFloat(hourInputs[i].value) || 0;
-        let g = parseFloat(gradeInputs[i].value) || 0;
+        let p = parseFloat(gradeInputs[i].value); // Points from dropdown
         
-        let info = getGradeInfo(g);
-        
-        const badge = document.getElementById(`badge-${courses[i].id}`);
-        if (g > 0) {
-            badge.textContent = info.letter;
-            badge.style.color = info.color;
-            badge.style.border = `1px solid ${info.color}`;
-        } else {
-            badge.textContent = '-';
-            badge.style.color = 'inherit';
-            badge.style.border = 'none';
-        }
-        
-        if (h > 0 && g > 0) {
+        if (h > 0 && !isNaN(p)) {
             totalSemesterHours += h;
-            totalSemesterPoints += (info.points * h);
+            totalSemesterPoints += (p * h);
         }
     }
+    currentSemesterTotalHours = totalSemesterHours;
     
     let semesterGpa = 0;
     if (totalSemesterHours > 0) {
@@ -130,32 +128,34 @@ function calculate() {
     let finalRating = getRatingByPoints(cumulativeGpa);
     resRating.textContent = finalRating;
 
-    calculateTarget(prevHours, prevGpa, totalSemesterHours);
+    calculateTarget(prevHours, prevGpa);
 }
 
-function calculateTarget(prevHours, prevGpa, totalSemesterHours) {
+function calculateTarget(prevHours, prevGpa) {
     if (!targetToggle.checked) return;
     
     let target = parseFloat(targetGpaInput.value) || 0;
-    if (target === 0 || totalSemesterHours === 0) {
+    let semHours = parseFloat(targetHoursInput.value) || 0;
+    
+    if (target === 0 || semHours === 0) {
         targetResult.className = 'target-message';
-        targetResult.textContent = 'أدخل الساعات الحالية وهدفك لنحسب لك!';
+        targetResult.textContent = 'أدخل الساعات وهدفك التراكمي لنخبرك بالمعدل الفصلي المطلوب!';
         return;
     }
     
-    let totalTargetPoints = target * (prevHours + totalSemesterHours);
+    let totalTargetPoints = target * (prevHours + semHours);
     let neededSemesterPoints = totalTargetPoints - (prevHours * prevGpa);
-    let neededSemesterGpa = neededSemesterPoints / totalSemesterHours;
+    let neededSemesterGpa = neededSemesterPoints / semHours;
     
     if (neededSemesterGpa > 4.2) {
         targetResult.className = 'target-message danger';
-        targetResult.textContent = `مستحيل! تحتاج معدل فصلي ${neededSemesterGpa.toFixed(2)} وهذا يتجاوز 4.20`;
+        targetResult.textContent = `مستحيل! للوصول إلى تراكمي ${target.toFixed(2)} تحتاج معدل فصلي ${neededSemesterGpa.toFixed(2)} وهذا يتجاوز 4.20 ❌`;
     } else if (neededSemesterGpa < 0) {
         targetResult.className = 'target-message success';
-        targetResult.textContent = `وضعك ممتاز، حتى لو رسبت ستبقى فوق هدفك!`;
+        targetResult.textContent = `وضعك ممتاز! حتى لو كان معدلك الفصلي صفر ستبقى فوق هدفك.`;
     } else {
         targetResult.className = 'target-message success';
-        targetResult.textContent = `تحتاج معدل فصلي ${neededSemesterGpa.toFixed(2)} هذا الفصل لتحقيق هدفك 🚀`;
+        targetResult.textContent = `للوصول إلى تراكمي ${target.toFixed(2)}، يجب أن تجلب معدل فصلي لا يقل عن ${neededSemesterGpa.toFixed(2)} هذا الفصل 🚀`;
     }
 }
 
@@ -163,16 +163,22 @@ function calculateTarget(prevHours, prevGpa, totalSemesterHours) {
 addCourseBtn.addEventListener('click', addCourseRow);
 prevHoursInput.addEventListener('input', calculate);
 prevGpaInput.addEventListener('input', calculate);
-targetGpaInput.addEventListener('input', calculate);
+targetGpaInput.addEventListener('input', () => calculateTarget(parseFloat(prevHoursInput.value) || 0, parseFloat(prevGpaInput.value) || 0));
+targetHoursInput.addEventListener('input', () => calculateTarget(parseFloat(prevHoursInput.value) || 0, parseFloat(prevGpaInput.value) || 0));
 
 // Save and Export to Bot
 saveBtn.addEventListener('click', () => {
+    let semPercentage = ((parseFloat(resSemesterGpa.textContent) / 4.2) * 100).toFixed(2);
+    let cumPercentage = ((parseFloat(resCumulativeGpa.textContent) / 4.2) * 100).toFixed(2);
+    
     let data = {
         semesterGpa: resSemesterGpa.textContent,
+        semesterPercentage: semPercentage,
+        semesterHours: currentSemesterTotalHours,
         cumulativeGpa: resCumulativeGpa.textContent,
-        rating: resRating.textContent,
-        prevGpa: prevGpaInput.value,
-        prevHours: prevHoursInput.value
+        cumulativePercentage: cumPercentage,
+        cumulativeTotalHours: (parseFloat(prevHoursInput.value) || 0) + currentSemesterTotalHours,
+        rating: resRating.textContent
     };
     
     // Send data to Bot
